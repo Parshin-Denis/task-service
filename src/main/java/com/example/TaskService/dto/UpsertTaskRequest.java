@@ -12,8 +12,6 @@ public class UpsertTaskRequest {
 
     private TaskStatus taskStatus;
 
-    private String authorId;
-
     private String assigneeId;
 
 }

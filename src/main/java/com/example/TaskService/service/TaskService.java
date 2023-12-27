@@ -14,10 +14,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -43,12 +40,16 @@ public class TaskService {
                 .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
-    public Mono<TaskResponse> save(UpsertTaskRequest upsertTaskRequest) {
+    public Mono<TaskResponse> save(String userName, UpsertTaskRequest upsertTaskRequest) {
         Task task = taskMapper.requestToTask(upsertTaskRequest);
         task.setId(UUID.randomUUID().toString());
         task.setCreatedAt(Instant.now());
         task.setObserverIds(new HashSet<>());
-        return taskRepository.save(task)
+        return userRepository.findByName(userName)
+                .flatMap(user -> {
+                    task.setAuthorId(user.getId());
+                    return taskRepository.save(task);
+                })
                 .flatMap(this::getFullTask)
                 .map(taskMapper::taskToResponse);
     }
@@ -61,6 +62,7 @@ public class TaskService {
                     newTask.setUpdatedAt(Instant.now());
                     newTask.setCreatedAt(task.getCreatedAt());
                     newTask.setObserverIds(task.getObserverIds());
+                    newTask.setAuthorId(task.getAuthorId());
                     return taskRepository.save(newTask);
                 })
                 .flatMap(this::getFullTask)
@@ -93,14 +95,14 @@ public class TaskService {
         List<Mono<User>> users = new ArrayList<>();
 
         users.add(task.getAuthorId() == null ? Mono.just(new User()) : userRepository.findById(task.getAuthorId())
-                .defaultIfEmpty(new User(task.getAuthorId(), null, null)));
+                .defaultIfEmpty(new User(task.getAuthorId(), null, null, null, null)));
 
         users.add(task.getAssigneeId() == null ? Mono.just(new User()) : userRepository.findById(task.getAssigneeId())
-                .defaultIfEmpty(new User(task.getAssigneeId(), null, null)));
+                .defaultIfEmpty(new User(task.getAssigneeId(), null, null, null, null)));
 
         if (task.getObserverIds() != null) {
             task.getObserverIds().forEach(observerId -> users.add(userRepository.findById(observerId)
-                    .defaultIfEmpty(new User(observerId, null, null))));
+                    .defaultIfEmpty(new User(observerId, null, null, null, null))));
         }
         return Mono.zip(users, task::setUsers);
     }

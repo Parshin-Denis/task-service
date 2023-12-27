@@ -7,6 +7,7 @@ import com.example.TaskService.model.User;
 import com.example.TaskService.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -21,6 +22,8 @@ public class UserService {
 
     private final UserMapper userMapper;
 
+    private final PasswordEncoder passwordEncoder;
+
     public Flux<UserResponse> findAll() {
         return userRepository.findAll().map(userMapper::userToResponse);
     }
@@ -32,9 +35,14 @@ public class UserService {
                 .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
+    public Mono<User> findByName(String name) {
+        return userRepository.findByName(name);
+    }
+
     public Mono<UserResponse> save(UpsertUserRequest upsertUserRequest) {
         User user = userMapper.requestToUser(upsertUserRequest);
         user.setId(UUID.randomUUID().toString());
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user).map(userMapper::userToResponse);
     }
 
@@ -43,6 +51,7 @@ public class UserService {
                 .flatMap(user -> {
                     User newUser = userMapper.requestToUser(upsertUserRequest);
                     newUser.setId(id);
+                    newUser.setPassword(passwordEncoder.encode(newUser.getPassword()));
                     return userRepository.save(newUser);
                 })
                 .map(userMapper::userToResponse)
