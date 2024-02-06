@@ -7,9 +7,7 @@ import com.example.TaskService.dto.UserResponse;
 import com.example.TaskService.model.RoleType;
 import com.example.TaskService.model.TaskStatus;
 import org.junit.jupiter.api.Test;
-import org.springframework.security.test.context.support.TestExecutionEvent;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.security.test.context.support.WithUserDetails;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -44,8 +42,7 @@ public class TaskControllerTest extends AbstractTest {
     }
 
     @Test
-    @WithUserDetails(userDetailsServiceBeanName = "reactiveUserDetailsServiceImpl", value = "Manager",
-            setupBefore = TestExecutionEvent.TEST_EXECUTION)
+    @WithMockUser(username = "Manager", password = "13245", roles = {"MANAGER"})
     public void whenCreateTask_thenReturnNewTask() {
         StepVerifier.create(taskRepository.count())
                 .expectNext(1L)
